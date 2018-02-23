@@ -1,0 +1,9 @@
+*.pyc
+*.tsv
+*.ipynb
+input
+models
+outputs
+observers
+.idea
+settings.json
