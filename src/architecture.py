@@ -75,6 +75,30 @@ class Architecture:
                                         name="dcoilwtico")
             transactions = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_past, 1),
                                           name="transactions")
+            local_holiday_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                           name="local_holiday_fut")
+            national_holiday_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                           name="national_holiday_fut")
+            regional_holiday_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                           name="regional_holiday_fut")
+            year = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_past, 1),
+                                           name="year")
+            month = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_past, 1),
+                                           name="month")
+            day = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_past, 1),
+                                           name="day")
+            dow = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_past, 1),
+                                           name="dow")
+            year_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                           name="year_fut")
+            month_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                           name="month_fut")
+            day_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                           name="day_fut")
+            dow_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                           name="dow_fut")
+            onpromotion_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
+                                         name="onpromotion_fut")
             return {"unit_sales": unit_sales,
                     "target": target,
                     "store_nbr": store_nbr,
@@ -96,7 +120,19 @@ class Architecture:
                     "local_holiday": local_holiday,
                     "dcoilwtico": dcoilwtico,
                     "transactions": transactions,
-                    "loss_dev": loss_dev}
+                    "loss_dev": loss_dev,
+                    "local_holiday_fut": local_holiday_fut,
+                    "national_holiday_fut": national_holiday_fut,
+                    "regional_holiday_fut": regional_holiday_fut,
+                    "year": year,
+                    "month": month,
+                    "day": day,
+                    "dow": dow,
+                    "year_fut": year_fut,
+                    "month_fut": month_fut,
+                    "day_fut": day_fut,
+                    "dow_fut": dow_fut,
+                    "onpromotion_fut": onpromotion_fut}
 
     def define_core_model(self):
         with tf.variable_scope("Core_Model"):
@@ -139,6 +175,18 @@ class Architecture:
                                                             self.placeholders.local_holiday_type[:, :, 0],
                                                             name="emb_lookup_local_holiday_type")
 
+            
+            future_data_norm = BatchNorm(name="bn_future")(tf.contrib.layers.flatten(tf.concat(
+                                                              [self.placeholders.local_holiday_fut,
+                                                               self.placeholders.national_holiday_fut,
+                                                               self.placeholders.regional_holiday_fut,
+                                                               self.placeholders.year_fut,
+                                                               self.placeholders.month_fut,
+                                                               self.placeholders.day_fut,
+                                                               self.placeholders.dow_fut,
+                                                               self.placeholders.onpromotion_fut], axis=2)))
+
+
             # Data preparation
             static_data_norm = BatchNorm(name="bn_static")(tf.expand_dims(self.placeholders.item_perishable, 1))
 
@@ -149,7 +197,11 @@ class Architecture:
                                                                           self.placeholders.local_holiday_transferred,
                                                                           self.placeholders.local_holiday,
                                                                           self.placeholders.dcoilwtico,
-                                                                          self.placeholders.transactions], axis=2,
+                                                                          self.placeholders.transactions,
+                                                                          self.placeholders.year,
+                                                                          self.placeholders.month,
+                                                                          self.placeholders.day,
+                                                                          self.placeholders.dow], axis=2,
                                                                          name="temporal_data_norm"))
 
             static_data = tf.concat([static_data_norm,
@@ -160,7 +212,8 @@ class Architecture:
                                      emb_city,
                                      emb_state,
                                      emb_store_type,
-                                     emb_store_cluster], axis=1)
+                                     emb_store_cluster,
+                                     future_data_norm], axis=1)
 
             temporal_data = tf.concat([self.placeholders.unit_sales,
                                        temporal_data_norm,

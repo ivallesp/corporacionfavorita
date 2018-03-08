@@ -1,5 +1,6 @@
 import gc
 import os
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -167,7 +168,20 @@ def get_batcher(data_cube, batch_size, lag=15):
                  "local_holiday_transferred": batch_cube[:, :-lag, [18]],
                  "local_holiday": batch_cube[:, :-lag, [19]],
                  "dcoilwtico": batch_cube[:, :-lag, [20]].astype(float),
-                 "transactions": batch_cube[:, :-lag, [21]].astype(float)}
+                 "transactions": batch_cube[:, :-lag, [21]].astype(float),
+                 "year": (np.vectorize(lambda x:x[0:4])(batch_cube[:,:-lag,[0]]).astype("float")-2015)/2,
+                 "month": (np.vectorize(lambda x:x[5:7])(batch_cube[:,:-lag,[0]]).astype("float")-6.5)/5.5,
+                 "day": (np.vectorize(lambda x:x[8:])(batch_cube[:,:-lag,[0]]).astype("float")-16)/15,
+                 "dow": (np.vectorize(lambda x:datetime.datetime(int(x[0:4]),int(x[5:7]),int(x[8:])).weekday())(batch_cube[:,:-lag,[0]]).astype("float")-3)/3,
+                 "year_fut": (np.vectorize(lambda x:x[0:4])(batch_cube[:,-lag:,[0]]).astype("float")-2015)/2,
+                 "month_fut": (np.vectorize(lambda x:x[5:7])(batch_cube[:,-lag:,[0]]).astype("float")-6.5)/5.5,
+                 "day_fut": (np.vectorize(lambda x:x[8:])(batch_cube[:,-lag:,[0]]).astype("float")-16)/15,
+                 "dow_fut": (np.vectorize(lambda x:datetime.datetime(int(x[0:4]),int(x[5:7]),int(x[8:])).weekday())(batch_cube[:,-lag:,[0]]).astype("float")-3)/3,
+                 "onpromotion_fut": batch_cube[:, -lag:, [5]],
+                 "local_holiday_fut": batch_cube[:, -lag:, [19]],
+                 "national_holiday_fut": batch_cube[:, -lag:, [15]],
+                 "regional_holiday_fut": batch_cube[:, -lag:, [16]]
+                 }
 
         params = {"mean_unit_sales": batch["unit_sales"].mean(axis=1, keepdims=True),
                   "std_unit_sales": batch["unit_sales"].std(axis=1, keepdims=True)}
