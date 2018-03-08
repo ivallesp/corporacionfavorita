@@ -40,6 +40,7 @@ class Architecture:
     def define_placeholders(self):
         with tf.variable_scope("Placeholders"):
             loss_dev = tf.placeholder(dtype=tf.float32, shape=(self.barch_size), name="loss_dev_manual")
+            mape_dev = tf.placeholder(dtype=tf.float32, shape=(self.barch_size), name="mape_dev_manual")
             unit_sales = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_past, 1),
                                         name="unit_sales")
             target = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
@@ -99,6 +100,9 @@ class Architecture:
                                            name="dow_fut")
             onpromotion_fut = tf.placeholder(dtype=tf.float32, shape=(self.barch_size, self.n_timesteps_future, 1),
                                          name="onpromotion_fut")
+
+            is_train = tf.placeholder(dtype=tf.bool, shape=None, name="is_train")
+
             return {"unit_sales": unit_sales,
                     "target": target,
                     "store_nbr": store_nbr,
@@ -120,7 +124,6 @@ class Architecture:
                     "local_holiday": local_holiday,
                     "dcoilwtico": dcoilwtico,
                     "transactions": transactions,
-                    "loss_dev": loss_dev,
                     "local_holiday_fut": local_holiday_fut,
                     "national_holiday_fut": national_holiday_fut,
                     "regional_holiday_fut": regional_holiday_fut,
@@ -132,7 +135,10 @@ class Architecture:
                     "month_fut": month_fut,
                     "day_fut": day_fut,
                     "dow_fut": dow_fut,
-                    "onpromotion_fut": onpromotion_fut}
+                    "onpromotion_fut": onpromotion_fut,
+                    "loss_dev": loss_dev,
+                    "mape_dev": mape_dev,
+                    "is_train": is_train}
 
     def define_core_model(self):
         with tf.variable_scope("Core_Model"):
@@ -184,11 +190,13 @@ class Architecture:
                                                                self.placeholders.month_fut,
                                                                self.placeholders.day_fut,
                                                                self.placeholders.dow_fut,
-                                                               self.placeholders.onpromotion_fut], axis=2)))
+                                                               self.placeholders.onpromotion_fut], axis=2)),
+                                                           train=self.placeholders.is_train)
 
 
             # Data preparation
-            static_data_norm = BatchNorm(name="bn_static")(tf.expand_dims(self.placeholders.item_perishable, 1))
+            static_data_norm = BatchNorm(name="bn_static")(tf.expand_dims(self.placeholders.item_perishable, 1),
+                                                           train=self.placeholders.is_train)
 
             temporal_data_norm = BatchNorm(name="bn_temporal")(tf.concat([self.placeholders.onpromotion,
                                                                           self.placeholders.national_holiday_transferred,
@@ -202,7 +210,8 @@ class Architecture:
                                                                           self.placeholders.month,
                                                                           self.placeholders.day,
                                                                           self.placeholders.dow], axis=2,
-                                                                         name="temporal_data_norm"))
+                                                                         name="temporal_data_norm"),
+                                                               train=self.placeholders.is_train)
 
             static_data = tf.concat([static_data_norm,
                                      emb_store_nbr,
@@ -230,13 +239,13 @@ class Architecture:
             _, states = tf.nn.dynamic_rnn(recurrent_cell_encoder, temporal_data, dtype=tf.float32)
             # Thought treatment
             states = tf.concat(flatten([[s.c for s in states], [s.h for s in states], [static_data]]), axis=1)
-            states = BatchNorm(name="thought_1")(states)
+            states = BatchNorm(name="thought_1")(states, train=self.placeholders.is_train)
             states = tf.layers.dense(inputs=states, units=1024, activation=tf.nn.relu,
                                      kernel_initializer=tf.contrib.layers.xavier_initializer(), name="d_thought_1")
-            states = BatchNorm(name="thought_2")(states)
+            states = BatchNorm(name="thought_2")(states, train=self.placeholders.is_train)
             states = tf.layers.dense(inputs=states, units=1024, activation=tf.nn.relu,
                                      kernel_initializer=tf.contrib.layers.xavier_initializer(), name="d_thought_2")
-            states = BatchNorm(name="thought_3")(states)
+            states = BatchNorm(name="thought_3")(states, train=self.placeholders.is_train)
             states = tf.layers.dense(inputs=states, units=self.n_recurrent_cells * self.n_recurrent_layers * 2,
                                      activation=None, kernel_initializer=tf.contrib.layers.xavier_initializer())
             thought_vector = []
@@ -284,7 +293,8 @@ class Architecture:
             train_final_scalar_probes = {"loss": tf.squeeze(self.losses.loss)}
             final_performance_scalar = [tf.summary.scalar(k, tf.reduce_mean(v), family=self.name)
                                         for k, v in train_final_scalar_probes.items()]
-            dev_scalar_probes = {"loss_dev": self.placeholders.loss_dev}
+            dev_scalar_probes = {"loss_dev": self.placeholders.loss_dev,
+                                 "mape_dev": self.placeholders.mape_dev}
             dev_performance_scalar = [tf.summary.scalar(k, v, family=self.name) for k, v in dev_scalar_probes.items()]
             dev_performance_scalar = tf.summary.merge(dev_performance_scalar)
             return {"scalar_train_performance": tf.summary.merge(final_performance_scalar),

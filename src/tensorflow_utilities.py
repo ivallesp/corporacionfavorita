@@ -69,3 +69,10 @@ class TensorFlowSaver:
         else:
             ckpt_path = os.path.join(path, ckpt_file)
         self.saver.restore(sess, ckpt_path)
+
+
+def batch_dict_to_feed_dict(batch, net):
+    fd = {}
+    for key, value in batch.items():
+        fd[getattr(net.placeholders, key)] = value
+    return fd
