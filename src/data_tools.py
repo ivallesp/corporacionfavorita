@@ -149,11 +149,11 @@ def preprocess_data():
     return df, data_cube
 
 
-def get_batcher(data_cube, batch_size, lag=15, shuffle_present=False):
+def get_batcher(data_cube, batch_size, lag=15, shuffle_present=False, shuffle_periods=100):
     for batch_cube in batching([data_cube], n=batch_size, return_incomplete_batches=True):
         batch_cube = batch_cube[0]
         if shuffle_present:
-            batch_cube = batch_cube[:, :(batch_cube.shape[1] - np.random.randint(0, 100))]
+            batch_cube = batch_cube[:, :(batch_cube.shape[1] - np.random.randint(0, shuffle_periods))]
 
         batch = {"store_nbr": batch_cube[:, 0, 1],
                  "item_nbr": batch_cube[:, 0, 2],
