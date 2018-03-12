@@ -5,6 +5,7 @@ import datetime
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from tqdm import tqdm
 
 from src.common_paths import get_data_path
 from src.general_utilities import batching
@@ -142,12 +143,18 @@ def preprocess_data():
     np.random.seed(655321)
     np.random.shuffle(data_cube)
     gc.collect()
+
+    for i, batch in tqdm(enumerate(batching(data_cube, n=10000, return_incomplete_batches=True))):
+        np.save(os.path.join(get_data_path(), "data_cube_{}.npy".format(i)), batch)
     return df, data_cube
 
 
-def get_batcher(data_cube, batch_size, lag=15):
+def get_batcher(data_cube, batch_size, lag=15, shuffle_present=False):
     for batch_cube in batching([data_cube], n=batch_size, return_incomplete_batches=True):
         batch_cube = batch_cube[0]
+        if shuffle_present:
+            batch_cube = batch_cube[:, :(batch_cube.shape[1] - np.random.randint(0, 100))]
+
         batch = {"store_nbr": batch_cube[:, 0, 1],
                  "item_nbr": batch_cube[:, 0, 2],
                  "unit_sales": batch_cube[:, :-lag, [4]].astype(float),
@@ -169,14 +176,16 @@ def get_batcher(data_cube, batch_size, lag=15):
                  "local_holiday": batch_cube[:, :-lag, [19]],
                  "dcoilwtico": batch_cube[:, :-lag, [20]].astype(float),
                  "transactions": batch_cube[:, :-lag, [21]].astype(float),
-                 "year": (np.vectorize(lambda x:x[0:4])(batch_cube[:,:-lag,[0]]).astype("float")-2015)/2,
-                 "month": (np.vectorize(lambda x:x[5:7])(batch_cube[:,:-lag,[0]]).astype("float")-6.5)/5.5,
-                 "day": (np.vectorize(lambda x:x[8:])(batch_cube[:,:-lag,[0]]).astype("float")-16)/15,
-                 "dow": (np.vectorize(lambda x:datetime.datetime(int(x[0:4]),int(x[5:7]),int(x[8:])).weekday())(batch_cube[:,:-lag,[0]]).astype("float")-3)/3,
-                 "year_fut": (np.vectorize(lambda x:x[0:4])(batch_cube[:,-lag:,[0]]).astype("float")-2015)/2,
-                 "month_fut": (np.vectorize(lambda x:x[5:7])(batch_cube[:,-lag:,[0]]).astype("float")-6.5)/5.5,
-                 "day_fut": (np.vectorize(lambda x:x[8:])(batch_cube[:,-lag:,[0]]).astype("float")-16)/15,
-                 "dow_fut": (np.vectorize(lambda x:datetime.datetime(int(x[0:4]),int(x[5:7]),int(x[8:])).weekday())(batch_cube[:,-lag:,[0]]).astype("float")-3)/3,
+                 "year": (np.vectorize(lambda x: x[0:4])(batch_cube[:, :-lag, [0]]).astype("float") - 2015) / 2,
+                 "month": (np.vectorize(lambda x: x[5:7])(batch_cube[:, :-lag, [0]]).astype("float") - 6.5) / 5.5,
+                 "day": (np.vectorize(lambda x: x[8:])(batch_cube[:, :-lag, [0]]).astype("float") - 16) / 15,
+                 "dow": (np.vectorize(lambda x: datetime.datetime(int(x[0:4]), int(x[5:7]), int(x[8:])).weekday())(
+                     batch_cube[:, :-lag, [0]]).astype("float") - 3) / 3,
+                 "year_fut": (np.vectorize(lambda x: x[0:4])(batch_cube[:, -lag:, [0]]).astype("float") - 2015) / 2,
+                 "month_fut": (np.vectorize(lambda x: x[5:7])(batch_cube[:, -lag:, [0]]).astype("float") - 6.5) / 5.5,
+                 "day_fut": (np.vectorize(lambda x: x[8:])(batch_cube[:, -lag:, [0]]).astype("float") - 16) / 15,
+                 "dow_fut": (np.vectorize(lambda x: datetime.datetime(int(x[0:4]), int(x[5:7]), int(x[8:])).weekday())(
+                     batch_cube[:, -lag:, [0]]).astype("float") - 3) / 3,
                  "onpromotion_fut": batch_cube[:, -lag:, [5]],
                  "local_holiday_fut": batch_cube[:, -lag:, [19]],
                  "national_holiday_fut": batch_cube[:, -lag:, [15]],
