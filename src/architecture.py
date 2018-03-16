@@ -236,7 +236,6 @@ class Architecture:
                                              tf.nn.rnn_cell.LSTMCell(self.n_recurrent_cells)]))
             _, states = tf.nn.dynamic_rnn(recurrent_cell_encoder, temporal_data, dtype=tf.float32)
 
-            _, states = tf.nn.dynamic_rnn(recurrent_cell_encoder, temporal_data, dtype=tf.float32)
             # Thought treatment
             states = tf.concat(flatten([[s.c for s in states], [s.h for s in states], [static_data]]), axis=1)
             states = BatchNorm(name="thought_1")(states, train=self.placeholders.is_train)
@@ -259,10 +258,9 @@ class Architecture:
                 tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.LSTMCell(self.n_recurrent_cells),
                                              tf.nn.rnn_cell.LSTMCell(self.n_recurrent_cells),
                                              tf.nn.rnn_cell.LSTMCell(self.n_recurrent_cells)]))
-            _, states = tf.nn.dynamic_rnn(recurrent_cell_encoder, temporal_data, dtype=tf.float32)
 
             go = tf.ones([tf.shape(self.placeholders.unit_sales)[0], self.n_timesteps_future, self.n_recurrent_cells])
-            outputs, states = decoder(inputs=go, thought_states=states, cell=recurrent_cell_decoder,
+            outputs, states = decoder(inputs=go, thought_states=thought_vector, cell=recurrent_cell_decoder,
                                       max_ouput_sequence_length=self.n_timesteps_future, name="decoder")
 
             lstm_stacked_output = tf.reshape(outputs, shape=[-1, outputs.shape[2].value], name="stack_LSTM")
