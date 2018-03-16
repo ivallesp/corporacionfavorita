@@ -252,6 +252,7 @@ class Architecture:
                 c = states[:, i * self.n_recurrent_cells:(i + 1) * self.n_recurrent_cells]
                 h = states[:, (i + self.n_recurrent_layers) * self.n_recurrent_cells:(i + self.n_recurrent_layers + 1) * self.n_recurrent_cells]
                 thought_vector.append(tf.nn.rnn_cell.LSTMStateTuple(c, h))
+            thought_vector = tuple(thought_vector)
 
             # Decoder
             recurrent_cell_decoder = tf.contrib.rnn.CompiledWrapper(
