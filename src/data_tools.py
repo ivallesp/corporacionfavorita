@@ -41,13 +41,13 @@ def cartesian_multiple(df, columns):
 
 
 def load_raw_data():
-    df_train = pd.read_csv(os.path.join(get_data_path(), "train.csv"))
-    df_test = pd.read_csv(os.path.join(get_data_path(), "test.csv"))
-    df_transactions = pd.read_csv(os.path.join(get_data_path(), "transactions.csv"))
-    df_items = pd.read_csv(os.path.join(get_data_path(), "items.csv"))
-    df_stores = pd.read_csv(os.path.join(get_data_path(), "stores.csv"))
-    df_holiday_events = pd.read_csv(os.path.join(get_data_path(), "holidays_events.csv"))
-    df_oil = pd.read_csv(os.path.join(get_data_path(), "oil.csv"))
+    df_train = pd.read_csv(os.path.join(get_data_path(), "cf", "train.csv"))
+    df_test = pd.read_csv(os.path.join(get_data_path(), "cf", "test.csv"))
+    df_transactions = pd.read_csv(os.path.join(get_data_path(), "cf", "transactions.csv"))
+    df_items = pd.read_csv(os.path.join(get_data_path(), "cf", "items.csv"))
+    df_stores = pd.read_csv(os.path.join(get_data_path(), "cf", "stores.csv"))
+    df_holiday_events = pd.read_csv(os.path.join(get_data_path(), "cf", "holidays_events.csv"))
+    df_oil = pd.read_csv(os.path.join(get_data_path(), "cf", "oil.csv"))
     return df_train, df_test, df_transactions, df_items, df_stores, df_holiday_events, df_oil
 
 
@@ -149,7 +149,7 @@ def preprocess_data():
     return df, data_cube
 
 
-def get_batcher(data_cube, batch_size, lag=15, shuffle_present=False, shuffle_periods=100):
+def get_batcher(data_cube, batch_size, lag=15, shuffle_present=False, shuffle_periods=100, train=True):
     for batch_cube in batching([data_cube], n=batch_size, return_incomplete_batches=True):
         batch_cube = batch_cube[0]
         if shuffle_present:
@@ -158,7 +158,6 @@ def get_batcher(data_cube, batch_size, lag=15, shuffle_present=False, shuffle_pe
         batch = {"store_nbr": batch_cube[:, 0, 1],
                  "item_nbr": batch_cube[:, 0, 2],
                  "unit_sales": batch_cube[:, :-lag, [4]].astype(float),
-                 "target": batch_cube[:, -lag:, [4]].astype(float),
                  "onpromotion": batch_cube[:, :-lag, [5]],
                  "item_family": batch_cube[:, 0, 6],
                  "item_class": batch_cube[:, 0, 7],
@@ -191,6 +190,9 @@ def get_batcher(data_cube, batch_size, lag=15, shuffle_present=False, shuffle_pe
                  "national_holiday_fut": batch_cube[:, -lag:, [15]],
                  "regional_holiday_fut": batch_cube[:, -lag:, [16]]
                  }
+
+        if train:
+            batch["target"] = batch_cube[:, -lag:, [4]].astype(float),
 
         params = {"mean_unit_sales": batch["unit_sales"].mean(axis=1, keepdims=True),
                   "std_unit_sales": batch["unit_sales"].std(axis=1, keepdims=True)}
