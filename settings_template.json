@@ -1,5 +1,5 @@
 {
-  "tensorboard_path": "",
-  "device": "",
-  "memory_fraction": ""
+  "tensorboard_path": "/path/of/tensorboard/logs",
+  "device": "0",
+  "memory_fraction": 1.0
 }
