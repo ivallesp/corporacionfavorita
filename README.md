@@ -1,4 +1,4 @@
-# Corporación Favorita Kaggle Competition - a Demand Forecast solution using Deep Learning
+# Corporación Favorita Kaggle Competition - an end-to-end Demand Forecast solution using Deep Learning
 In this repository I implement an RNN-based solution for demand forecast using Tensorflow. This was intended to be a proof of concept for understanding how good a recurrent neural network can perform in this set of tasks. A 50% MAPE has been achieved when predicting at a daily level and a 35% when aggregating this prediction at a weekly level.
 
 ## Technical solution
